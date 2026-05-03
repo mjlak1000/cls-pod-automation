@@ -1,0 +1,22 @@
+# Python dependencies for cls-etsy-automation
+
+# HTTP / API
+requests>=2.31.0
+
+# Environment variable loading
+python-dotenv>=1.0.0
+
+# Scheduling
+schedule>=1.2.0
+
+# Data handling
+pandas>=2.0.0
+
+# Sentiment analysis
+textblob>=0.17.1
+
+# Schema validation
+jsonschema>=4.21.0
+
+# Logging / output
+colorlog>=6.8.0
