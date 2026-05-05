@@ -31,35 +31,39 @@ import requests
 from dotenv import load_dotenv
 from textblob import TextBlob
 
+from etsy_client import etsy_headers
+
 load_dotenv()
 logger = logging.getLogger("sop4_sentiment_parser")
 
 ETSY_API_BASE = "https://openapi.etsy.com/v3"
+_PAGE_SIZE = 100
 
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _headers() -> dict:
-    api_key = os.getenv("ETSY_API_KEY", "")
-    if not api_key:
-        raise EnvironmentError("ETSY_API_KEY is not set")
-    return {"x-api-key": api_key}
-
-
-def _fetch_reviews(shop_id: str, limit: int = 100) -> list[dict]:
-    """Retrieve recent shop reviews from Etsy."""
+def _fetch_reviews(shop_id: str) -> list[dict]:
+    """Retrieve all recent shop reviews from Etsy, paginating as needed."""
     url = f"{ETSY_API_BASE}/application/shops/{shop_id}/reviews"
-    try:
-        response = requests.get(
-            url, headers=_headers(), params={"limit": limit}, timeout=30
-        )
-        response.raise_for_status()
-        return response.json().get("results", [])
-    except requests.RequestException as exc:
-        logger.error("Failed to fetch reviews: %s", exc)
-        return []
+    all_reviews: list[dict] = []
+    offset = 0
+    while True:
+        try:
+            response = requests.get(
+                url, headers=etsy_headers(), params={"limit": _PAGE_SIZE, "offset": offset}, timeout=30
+            )
+            response.raise_for_status()
+            page = response.json().get("results", [])
+        except requests.RequestException as exc:
+            logger.error("Failed to fetch reviews: %s", exc)
+            break
+        all_reviews.extend(page)
+        if len(page) < _PAGE_SIZE:
+            break
+        offset += _PAGE_SIZE
+    return all_reviews
 
 
 def _score_review(review: dict) -> dict:

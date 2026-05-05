@@ -46,25 +46,28 @@ def _interval(env_var: str, default: int) -> int:
 
 
 def main() -> None:
+    dry_run = os.getenv("DRY_RUN", "").lower() in ("1", "true")
+
     sop1_min = _interval("SOP1_INTERVAL_MINUTES", 60)
     sop2_min = _interval("SOP2_INTERVAL_MINUTES", 30)
     sop3_min = _interval("SOP3_INTERVAL_MINUTES", 15)
     sop4_min = _interval("SOP4_INTERVAL_MINUTES", 120)
     sop5_min = _interval("SOP5_INTERVAL_MINUTES", 1440)
 
-    schedule.every(sop1_min).minutes.do(sop1_pipeline.run)
-    schedule.every(sop2_min).minutes.do(sop2_pipeline.run)
-    schedule.every(sop3_min).minutes.do(sop3_pipeline.run)
-    schedule.every(sop4_min).minutes.do(sop4_sentiment_parser.run)
-    schedule.every(sop5_min).minutes.do(sop5_lifecycle.run)
+    schedule.every(sop1_min).minutes.do(sop1_pipeline.run, dry_run=dry_run)
+    schedule.every(sop2_min).minutes.do(sop2_pipeline.run, dry_run=dry_run)
+    schedule.every(sop3_min).minutes.do(sop3_pipeline.run, dry_run=dry_run)
+    schedule.every(sop4_min).minutes.do(sop4_sentiment_parser.run, dry_run=dry_run)
+    schedule.every(sop5_min).minutes.do(sop5_lifecycle.run, dry_run=dry_run)
 
     logger.info(
-        "Scheduler started — SOP1:%dm SOP2:%dm SOP3:%dm SOP4:%dm SOP5:%dm",
+        "Scheduler started — SOP1:%dm SOP2:%dm SOP3:%dm SOP4:%dm SOP5:%dm dry_run=%s",
         sop1_min,
         sop2_min,
         sop3_min,
         sop4_min,
         sop5_min,
+        dry_run,
     )
 
     while True:

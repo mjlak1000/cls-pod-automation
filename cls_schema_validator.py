@@ -18,16 +18,20 @@ import logging
 import os
 import sys
 
+import jsonschema
+
 logger = logging.getLogger("cls_schema_validator")
 
 # ---------------------------------------------------------------------------
 # CLS schema definition
 # (fields are derived from Master-Codebook-v1.0 — update here when the PDF
 #  is revised)
+# NOTE: listing_id is intentionally NOT required; its absence signals a new
+#       listing to be created (present = UPDATE, absent = CREATE).
 # ---------------------------------------------------------------------------
 CLS_SCHEMA = {
     "type": "object",
-    "required": ["listing_id", "title", "price", "quantity", "status"],
+    "required": ["title", "price", "quantity", "status"],
     "properties": {
         "listing_id": {"type": "string"},
         "title": {"type": "string", "minLength": 1, "maxLength": 140},
@@ -43,54 +47,9 @@ CLS_SCHEMA = {
 
 
 def validate_record(record: dict, schema: dict) -> list[str]:
-    """Return a list of validation error messages for *record*."""
-    errors: list[str] = []
-
-    required = schema.get("required", [])
-    for field in required:
-        if field not in record:
-            errors.append(f"Missing required field: '{field}'")
-
-    props = schema.get("properties", {})
-    for field, rules in props.items():
-        if field not in record:
-            continue
-        value = record[field]
-        expected_type = rules.get("type")
-        if expected_type == "string" and not isinstance(value, str):
-            errors.append(f"Field '{field}' must be a string, got {type(value).__name__}")
-        elif expected_type == "number" and not isinstance(value, (int, float)):
-            errors.append(f"Field '{field}' must be a number, got {type(value).__name__}")
-        elif expected_type == "integer" and not isinstance(value, int):
-            errors.append(f"Field '{field}' must be an integer, got {type(value).__name__}")
-        elif expected_type == "array" and not isinstance(value, list):
-            errors.append(f"Field '{field}' must be a list, got {type(value).__name__}")
-
-        if isinstance(value, str):
-            if "minLength" in rules and len(value) < rules["minLength"]:
-                errors.append(
-                    f"Field '{field}' is too short (min {rules['minLength']} chars)"
-                )
-            if "maxLength" in rules and len(value) > rules["maxLength"]:
-                errors.append(
-                    f"Field '{field}' is too long (max {rules['maxLength']} chars)"
-                )
-        if isinstance(value, (int, float)) and "minimum" in rules:
-            if value < rules["minimum"]:
-                errors.append(
-                    f"Field '{field}' must be >= {rules['minimum']}, got {value}"
-                )
-        if isinstance(value, list) and "maxItems" in rules:
-            if len(value) > rules["maxItems"]:
-                errors.append(
-                    f"Field '{field}' has too many items (max {rules['maxItems']})"
-                )
-        if "enum" in rules and value not in rules["enum"]:
-            errors.append(
-                f"Field '{field}' must be one of {rules['enum']}, got '{value}'"
-            )
-
-    return errors
+    """Return a list of validation error messages for *record* using jsonschema."""
+    validator = jsonschema.Draft7Validator(schema)
+    return [error.message for error in sorted(validator.iter_errors(record), key=str)]
 
 
 def validate_file(filepath: str) -> list[str]:
