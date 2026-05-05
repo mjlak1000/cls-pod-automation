@@ -27,6 +27,8 @@ from pathlib import Path
 import requests
 from dotenv import load_dotenv
 
+from etsy_client import etsy_headers
+
 load_dotenv()
 logger = logging.getLogger("sop3_pipeline")
 
@@ -36,13 +38,6 @@ ETSY_API_BASE = "https://openapi.etsy.com/v3"
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-
-def _etsy_headers() -> dict:
-    api_key = os.getenv("ETSY_API_KEY", "")
-    if not api_key:
-        raise EnvironmentError("ETSY_API_KEY is not set")
-    return {"x-api-key": api_key, "Content-Type": "application/json"}
-
 
 def _load_pending_orders(data_dir: str) -> list[tuple[Path, dict]]:
     """Return (path, order_dict) tuples for every order_*.json in *data_dir*."""
@@ -58,7 +53,7 @@ def _load_pending_orders(data_dir: str) -> list[tuple[Path, dict]]:
     return results
 
 
-def _create_shipment(order: dict, provider: str, shipping_api_key: str) -> str | None:
+def _create_shipment(order: dict, provider: str, shipping_api_key: str, shipping_api_base: str) -> str | None:
     """Submit a shipment request and return the tracking number, or None on failure."""
     ship_to = order.get("buyer_address", {})
     items = order.get("transactions", [])
@@ -70,7 +65,7 @@ def _create_shipment(order: dict, provider: str, shipping_api_key: str) -> str |
     headers = {"Authorization": f"Bearer {shipping_api_key}", "Content-Type": "application/json"}
     try:
         response = requests.post(
-            "https://api.example-shipping.com/v1/shipments",
+            f"{shipping_api_base}/shipments",
             json=payload,
             headers=headers,
             timeout=30,
@@ -87,7 +82,7 @@ def _update_etsy_tracking(shop_id: str, receipt_id: str, tracking_number: str, c
     url = f"{ETSY_API_BASE}/application/shops/{shop_id}/receipts/{receipt_id}/tracking"
     payload = {"tracking_code": tracking_number, "carrier_name": carrier, "send_bcc": True}
     try:
-        response = requests.post(url, json=payload, headers=_etsy_headers(), timeout=30)
+        response = requests.post(url, json=payload, headers=etsy_headers(), timeout=30)
         response.raise_for_status()
         return True
     except requests.RequestException as exc:
@@ -112,12 +107,15 @@ def run(dry_run: bool = False) -> int:
     data_dir = os.getenv("DATA_DIR", "data")
     provider = os.getenv("SHIPPING_PROVIDER", "usps")
     shipping_api_key = os.getenv("SHIPPING_API_KEY", "")
+    shipping_api_base = os.getenv("SHIPPING_API_BASE", "")
 
     if not dry_run:
         if not shop_id:
             raise EnvironmentError("ETSY_SHOP_ID is not set")
         if not shipping_api_key:
             raise EnvironmentError("SHIPPING_API_KEY is not set")
+        if not shipping_api_base:
+            raise EnvironmentError("SHIPPING_API_BASE is not set")
 
     pending = _load_pending_orders(data_dir)
     logger.info("SOP-3: %d pending order(s) to fulfil.", len(pending))
@@ -130,7 +128,7 @@ def run(dry_run: bool = False) -> int:
     failures = 0
     for path, order in pending:
         receipt_id = str(order.get("receipt_id", ""))
-        tracking = _create_shipment(order, provider, shipping_api_key)
+        tracking = _create_shipment(order, provider, shipping_api_key, shipping_api_base)
         if not tracking:
             failures += 1
             continue

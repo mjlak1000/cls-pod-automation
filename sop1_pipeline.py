@@ -25,6 +25,7 @@ import requests
 from dotenv import load_dotenv
 
 import cls_schema_validator
+from etsy_client import etsy_headers
 
 load_dotenv()
 logger = logging.getLogger("sop1_pipeline")
@@ -35,13 +36,6 @@ ETSY_API_BASE = "https://openapi.etsy.com/v3"
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-
-def _headers() -> dict:
-    api_key = os.getenv("ETSY_API_KEY", "")
-    if not api_key:
-        raise EnvironmentError("ETSY_API_KEY is not set")
-    return {"x-api-key": api_key, "Content-Type": "application/json"}
-
 
 def _load_products(data_dir: str) -> list[dict]:
     """Load all product JSON files from *data_dir*."""
@@ -88,10 +82,10 @@ def _upsert_listing(product: dict, shop_id: str, dry_run: bool = False) -> bool:
     try:
         if listing_id:
             url = f"{ETSY_API_BASE}/application/shops/{shop_id}/listings/{listing_id}"
-            response = requests.patch(url, json=payload, headers=_headers(), timeout=30)
+            response = requests.patch(url, json=payload, headers=etsy_headers(), timeout=30)
         else:
             url = f"{ETSY_API_BASE}/application/shops/{shop_id}/listings"
-            response = requests.post(url, json=payload, headers=_headers(), timeout=30)
+            response = requests.post(url, json=payload, headers=etsy_headers(), timeout=30)
 
         response.raise_for_status()
         logger.info("Synced listing '%s' (id=%s)", product.get("title"), listing_id)

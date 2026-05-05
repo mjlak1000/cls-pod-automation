@@ -17,6 +17,3 @@ textblob>=0.17.1
 
 # Schema validation
 jsonschema>=4.21.0
-
-# Logging / output
-colorlog>=6.8.0

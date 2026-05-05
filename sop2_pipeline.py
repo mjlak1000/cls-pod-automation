@@ -24,41 +24,45 @@ from datetime import datetime, timezone
 import requests
 from dotenv import load_dotenv
 
+from etsy_client import etsy_headers
+
 load_dotenv()
 logger = logging.getLogger("sop2_pipeline")
 
 ETSY_API_BASE = "https://openapi.etsy.com/v3"
+_PAGE_SIZE = 100
 
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _headers() -> dict:
-    api_key = os.getenv("ETSY_API_KEY", "")
-    if not api_key:
-        raise EnvironmentError("ETSY_API_KEY is not set")
-    return {"x-api-key": api_key, "Content-Type": "application/json"}
-
-
 def _fetch_open_orders(shop_id: str) -> list[dict]:
-    """Retrieve all open (unacknowledged) orders from Etsy."""
+    """Retrieve all open (unacknowledged) orders from Etsy, paginating as needed."""
     url = f"{ETSY_API_BASE}/application/shops/{shop_id}/receipts"
-    params = {"was_paid": True, "was_shipped": False, "limit": 100}
-    try:
-        response = requests.get(url, headers=_headers(), params=params, timeout=30)
-        response.raise_for_status()
-        return response.json().get("results", [])
-    except requests.RequestException as exc:
-        logger.error("Failed to fetch orders: %s", exc)
-        return []
+    all_orders: list[dict] = []
+    offset = 0
+    while True:
+        params = {"was_paid": True, "was_shipped": False, "limit": _PAGE_SIZE, "offset": offset}
+        try:
+            response = requests.get(url, headers=etsy_headers(), params=params, timeout=30)
+            response.raise_for_status()
+            page = response.json().get("results", [])
+        except requests.RequestException as exc:
+            logger.error("Failed to fetch orders: %s", exc)
+            break
+        all_orders.extend(page)
+        if len(page) < _PAGE_SIZE:
+            break
+        offset += _PAGE_SIZE
+    return all_orders
 
 
 def _acknowledge_order(shop_id: str, receipt_id: str) -> bool:
     """Mark an Etsy order receipt as acknowledged."""
     url = f"{ETSY_API_BASE}/application/shops/{shop_id}/receipts/{receipt_id}"
     try:
-        response = requests.put(url, json={"was_paid": True}, headers=_headers(), timeout=30)
+        response = requests.put(url, json={"was_paid": True}, headers=etsy_headers(), timeout=30)
         response.raise_for_status()
         return True
     except requests.RequestException as exc:

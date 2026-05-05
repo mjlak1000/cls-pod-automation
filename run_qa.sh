@@ -25,6 +25,7 @@ echo "      All pipelines validated."
 echo ""
 echo "[3/3] Syntax-checking all Python scripts..."
 python -m py_compile cls_schema_validator.py \
+    etsy_client.py \
     scheduler.py \
     sop1_pipeline.py \
     sop2_pipeline.py \
