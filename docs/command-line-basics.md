@@ -137,6 +137,20 @@ bash run_qa.sh
 
 ---
 
+## Trend Harvester
+
+```
+python trend_harvester.py
+```
+
+Discovers trending niches by combining Google Trends and Reddit data, scores demand and competition, and saves validated niches to `output/sop1/`.
+
+```bash
+python trend_harvester.py
+```
+
+---
+
 ## Environment variables quick reference
 
 | Variable | Used by | Description |
@@ -145,8 +159,13 @@ bash run_qa.sh
 | `ETSY_SHOP_ID` | all SOPs | Your Etsy shop ID |
 | `SHIPPING_PROVIDER` | SOP-3 | Carrier name (e.g. `usps`) |
 | `SHIPPING_API_KEY` | SOP-3 | Shipping provider API key |
+| `SHIPPING_API_BASE` | SOP-3 | Shipping provider API base URL |
+| `REDDIT_CLIENT_ID` | Trend Harvester | Reddit app client ID |
+| `REDDIT_CLIENT_SECRET` | Trend Harvester | Reddit app client secret |
+| `REDDIT_USER_AGENT` | Trend Harvester | Reddit API user agent string |
 | `DATA_DIR` | all SOPs | Data directory (default: `data`) |
 | `LOG_LEVEL` | all scripts | Python log level (default: `INFO`) |
+| `DRY_RUN` | scheduler | Run all SOPs in dry-run mode when `true` or `1` |
 | `SOP1_INTERVAL_MINUTES` | scheduler | Run interval for SOP-1 |
 | `SOP2_INTERVAL_MINUTES` | scheduler | Run interval for SOP-2 |
 | `SOP3_INTERVAL_MINUTES` | scheduler | Run interval for SOP-3 |

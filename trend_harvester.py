@@ -2,6 +2,7 @@
 SOP 1: Trend Harvester
 Automates niche discovery and hook extraction for CLS
 """
+import logging
 import os
 from datetime import datetime, timezone
 from typing import List, Dict
@@ -12,6 +13,7 @@ import praw
 from dotenv import load_dotenv
 
 load_dotenv()
+logger = logging.getLogger("trend_harvester")
 
 # Scoring weights
 GOOGLE_WEIGHT = 0.6
@@ -76,7 +78,7 @@ class TrendHarvester:
             return min(score, 5.0)
 
         except Exception as e:
-            print(f"Google Trends error: {e}")
+            logger.error("Google Trends error: %s", e)
             return 0.0
 
     def get_reddit_hooks(self, subreddit_name: str, keyword: str, limit: int = 100) -> List[str]:
@@ -99,7 +101,7 @@ class TrendHarvester:
             return hooks[:10]
 
         except Exception as e:
-            print(f"Reddit error: {e}")
+            logger.error("Reddit error: %s", e)
             return []
 
     def discover_niche(self, keyword: str, subreddit: str, emotion_tag: str) -> Dict:
@@ -158,11 +160,15 @@ class TrendHarvester:
                 results.append(trend_data)
                 time.sleep(2)  # Rate limiting
             except Exception as e:
-                print(f"Error processing {niche.get('keyword', 'unknown')}: {e}")
+                logger.error("Error processing %s: %s", niche.get('keyword', 'unknown'), e)
         return results
 
 
 if __name__ == "__main__":
+    logging.basicConfig(
+        level=os.getenv("LOG_LEVEL", "INFO"),
+        format="%(asctime)s [%(levelname)s] %(name)s — %(message)s",
+    )
     harvester = TrendHarvester()
 
     test_niches = [
