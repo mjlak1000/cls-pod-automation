@@ -31,7 +31,8 @@ python -m py_compile cls_schema_validator.py \
     sop2_pipeline.py \
     sop3_pipeline.py \
     sop4_sentiment_parser.py \
-    sop5_lifecycle.py
+    sop5_lifecycle.py \
+    trend_harvester.py
 echo "      Syntax check passed."
 
 echo ""
